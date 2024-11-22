@@ -1,4 +1,5 @@
 import datetime
+import re
 import os.path
 import sys
 
@@ -42,6 +43,11 @@ TEMPL_STANZA = """\
 {}
 """
 
+re_numeric = re.compile(r'^\d+\.\s*')
+def paras(text):
+    clean = lambda p: re_numeric.sub("", p.strip() + "\n")
+    return [clean(p) for p in text.split("\n\n")]
+
 class Stanza:
     def __init__(self, tokens):
         token = tokens[0] # Since Group() was used in stanza grammar def
@@ -58,8 +64,22 @@ class Stanza:
 
     def __repr__(self):
         return "<Stanza>:" + str(self.__dict__)
+
+    @classmethod
+    def from_text(cls, sahityam, words, translation):
+        return cls([{
+            "sahityam": sahityam,
+            "words": words,
+            "translation": translation,
+        }])
+
         
     def to_new(self):
+        if len(paras(self.sahityam)) > 1 and len(paras(self.words)) > 1:
+            # Convert into a StanzaList
+            stanlist = StanzaList.from_text(self.sahityam, self.words, self.translation)
+            return stanlist.to_new()
+
         self.sahityam = self.sahityam.replace('<sup>', '[').replace('</sup>', ']') \
             .replace('\n', '   \n')
         self.words = self.words.replace('((', '![') \
@@ -67,6 +87,13 @@ class Stanza:
             .replace('<sup>', '[').replace('</sup>', ']') \
             .replace('\n', '   \n')  if self.words else ""
         return TEMPL_STANZA.format(self.sahityam, self.words, self.translation, "\n".join(self.appendix))
+
+class AsLister:
+    def __init__(self, mylist):
+        self.list = mylist
+
+    def as_list(self):
+        return self.list
 
 class StanzaList:
     def __init__(self, tokens):
@@ -83,6 +110,13 @@ class StanzaList:
 
     def to_new(self):
         return "".join([s.to_new() for s in self.stanzas])
+
+    @classmethod
+    def from_text(cls, sahityam, words, translation):
+        stanlist = []
+        for s, w, t in zip(paras(sahityam), paras(words), paras(translation)):
+            stanlist.append(Stanza.from_text(s, w, t))
+        return cls(AsLister(stanlist))
 
 
 stanza.set_parse_action(Stanza)
@@ -212,6 +246,7 @@ map_hk = {
     "Tyagaraja": "tyAgarAja",
     "Kriti": "kRti",
     "Telugu": "telugu",
+    "Adi": "Adi",
     "Rupakam": "rUpaka",
 }
 
@@ -417,11 +452,67 @@ those saluted by Thyagaraja and self-regulated.
 __NOTOC__
 """
 
+data_combined = """\
+<stanza>
+1. pavamAna sutuDu paTTu 
+<sup>1</sup>pAdAravindamulaku (nI)
+
+2. paGkajAkSi nelakonna-
+yaGga<sup>2</sup> yugamunaku (nI)
+
+3. nava muktA hAramulu 
+naTiyiJcEyuramunaku (nI)
+
+4. naLinAri kEru ciru 
+navvu gala mOmunaku (nI)
+
+5. prahlAda nAradAdi bhaktulu 
+<sup>3</sup>pogaDucuNDE (nI)
+
+6. rAjIva nayana tyAgarAja 
+vinutamaina (nI)
+-details-
+1. ((pavamAna-sutuDu "Anjaneya - son of Wind God")) ((paTTu "held")) ((pAda "feet"))-((aravindamulaku "to the Lotus")) (nI)
+
+
+2. ((paGkaja-akSi "Sita - Lotus Eyed")) ((nelakonna "seated"))-((aGga "thighs - part of body - limb")) ((yugamunaku "to the pair")) (nI)
+
+
+3. ((nava "new - fresh")) ((muktA "pearl")) ((hAramulu "necklaces")) ((naTiyiJcE "dangling - dancing"))-((uramunaku "to the chest - bosom")) (nI)
+
+
+4. ((naLina-ari "Moon - enemy of Lotus")) ((kEru "deriding")) ((ciru-navvu-gala "smiling")) ((mOmunaku "to the face")) (nI)
+
+
+5. prahlAda nArada-((Adi "and other")) ((bhaktulu "devotees")) ((pogaDucuNDE "ever extolling")) (nI)
+
+
+6. ((rAjIva "Lotus")) ((nayana "Eyed")) tyAgarAja ((vinutamaina "praised by")) (nI)
+-meaning-
+1. May there ever be victory and prosperity – to the Lotus Feet held by Anjaneya – son of Wind God and to Your name and form!
+
+2. May there ever be victory and prosperity - to the pair of thighs where Sita – the Lotus Eyed - is seated and to Your name and form!
+
+3. May there ever be victory and prosperity - to Your broad chest wherein dangles new pearl necklaces and to Your name and form! 
+
+4. May there ever be victory and prosperity - to the smiling face that derides the Moon – the enemy of Lotus - and to Your name and form! 
+
+5. May there ever be victory and prosperity to Your name and form which are ever extolled by Prahlada, Narada and other devotees! 
+
+6. O Lotus Eyed! May there ever be victory and prosperity to Your name and form which are praised by this Thyagaraja!
+</stanza>
+"""
+
 def test_song(data):
     result = song.parse_string(data)
     obj_song = result.as_list()[0]
     obj_song.set_old_filename("Nadopasanace.txt")
     print(obj_song.to_new())
+
+def test_combined(data):
+    result = stanza.parse_string(data)
+    obj_stanza = result.as_list()[0]
+    print(obj_stanza.to_new())
 
 def parse_and_convert(file_path):
     filename = file_path.rsplit("/")[-1]
@@ -434,7 +525,7 @@ def parse_and_convert(file_path):
         return obj_song.to_new()
 
 if __name__ == '__main__':
-    ##test_song(data_song)
+    ##test_combined(data_combined)
     filename = sys.argv[-1]
     base_path = "/Users/srikanth/Code/sahityam/songs/"
     file_path = os.path.join(base_path, filename)
