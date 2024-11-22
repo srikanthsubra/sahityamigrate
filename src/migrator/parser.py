@@ -1,4 +1,7 @@
 import datetime
+import os.path
+import sys
+
 from pyparsing import *
 from pprint import pprint
 
@@ -36,6 +39,7 @@ TEMPL_STANZA = """\
 {}-details-
 {}-meaning-
 {}{{{{</stanza>}}}}
+{}
 """
 
 class Stanza:
@@ -44,20 +48,35 @@ class Stanza:
         self.sahityam = token.get("sahityam", "")
         self.words = token.get("words", "")
         self.translation = token.get("translation", "")
+        self.appendix = []
+
+    def append(self, line):
+        self.appendix.append(line)
+
+    def get_line(self, index):
+        return self.sahityam.splitlines()[index]
 
     def __repr__(self):
         return "<Stanza>:" + str(self.__dict__)
         
     def to_new(self):
+        self.sahityam = self.sahityam.replace('<sup>', '[').replace('</sup>', ']') \
+            .replace('\n', '   \n')
         self.words = self.words.replace('((', '![') \
             .replace('))', ')').replace(' "', '](means "') \
             .replace('<sup>', '[').replace('</sup>', ']') \
             .replace('\n', '   \n')  if self.words else ""
-        return TEMPL_STANZA.format(self.sahityam, self.words, self.translation)
+        return TEMPL_STANZA.format(self.sahityam, self.words, self.translation, "\n".join(self.appendix))
 
 class StanzaList:
     def __init__(self, tokens):
         self.stanzas = tokens.as_list()
+
+    def append(self, index, line):
+        self.stanzas[index].append(line)
+
+    def get_line(self, stanza, index):
+        return self.stanzas[stanza].get_line(index)
 
     def __repr__(self):
         return "<StanzaList>:" + repr(self.stanzas)
@@ -72,7 +91,7 @@ stanza_list.set_parse_action(StanzaList)
 # ====================== LyricSectionList ======================
 
 # --- LyricSectionList: Grammar ----
-section_header = Literal("===").suppress() + Word(alphanums)("header") + Literal("===").suppress()
+section_header = Literal("===").suppress() + Word(alphanums+" ")("header") + Literal("===").suppress()
 lyric_section = Group(section_header + stanza_list)
 
 lyric_section_list = OneOrMore(lyric_section)
@@ -93,6 +112,12 @@ class LyricSection:
     def __repr__(self):
         return str(self.__dict__)
 
+    def append(self, stanza, line):
+        self.stanza_list.append(stanza, line)
+
+    def get_line(self, stanza, index):
+        return self.stanza_list.get_line(stanza, index)
+
     def to_new(self):
         return TEMPL_LYRICSECTION.format(self.header, self.stanza_list.to_new())
         
@@ -104,7 +129,14 @@ class LyricSectionList:
     def __repr__(self):
         return ",".join([repr(s) for s in self.sections])
 
+    def append(self, section, stanza, line):
+        self.sections[section].append(stanza, line)
+
+    def get_line(self, section, stanza, index):
+        return self.sections[section].get_line(stanza, index)
+
     def to_new(self):
+        self.append(0, 0, "<!--more-->")
         return "".join([s.to_new() for s in self.sections])
 
 lyric_section.set_parse_action(LyricSection)
@@ -166,6 +198,7 @@ footer = category_list + notoc
 # --- CategoryList: Object Representation ----
 TEMPL_HEADER = """\
 ---
+title: {title}
 date: {date}
 rAga: {raga}
 tAla: {tala}
@@ -179,10 +212,11 @@ map_hk = {
     "Tyagaraja": "tyAgarAja",
     "Kriti": "kRti",
     "Telugu": "telugu",
+    "Rupakam": "rUpaka",
 }
 
 def to_hk(val):
-    return map_hk.get(val, val)
+    return map_hk.get(val, val.lower())
 
 class CategoryList:
     def __init__(self, tokens):
@@ -194,14 +228,19 @@ class CategoryList:
         self.composer = self.categories[2]
         self.language = self.categories[3]
         self.format = self.categories[4]
+        self.title = ""
+
+    def set_title(self, title):
+        self.title = title
 
     def __repr__(self):
         return str(self.__dict__)
 
     def to_new(self):
         return TEMPL_HEADER.format(**{
+            "title": self.title,
             "date": datetime.datetime.now().strftime("%Y-%m-%d"),
-            "raga": self.raga,
+            "raga": self.raga.lower(),
             "tala": to_hk(self.tala),
             "composer": to_hk(self.composer),
             "language": to_hk(self.language),
@@ -215,23 +254,33 @@ song = Literal("==Lyrics==").suppress() + lyric_section_list("lyrics_area") + pr
 
 TEMPL_SONG ="""\
 {header_area}
-{lyrics_area}
-{prose_area}
+{lyrics_area}{prose_area}
 """
 
 class Song:
     def __init__(self, tokens):
-        ##print("Song init", tokens.as_list()[0])
-        ##print("Song dict", [(k, type(v)) for k, v in tokens.as_dict().items()])
         parsed = tokens.as_dict()
         self.header_area = parsed.get("header_area")
         self.lyrics_area = parsed.get("lyrics_area")
         self.prose_area = parsed.get("prose_area")
+        self.old_file = ""
+        self.new_file = ""
+        self.title = ""
 
+    def set_old_filename(self, filename):
+        self.old_file = filename
+        self.new_file = self.old_file.replace('_', '-').lower()[:-4]
+
+    def form_title(self):
+        first_line = self.lyrics_area.get_line(0, 0, 0)
+        self.title = form_title(self.new_file, first_line)
+        self.header_area.set_title(self.title)
+        
     def __repr__(self):
         return "\n".join(["{}: {}".format(k, v) for k, v in self.__dict__.items()])
 
     def to_new(self):
+        self.form_title()
         return TEMPL_SONG.format(**{
             "header_area": self.header_area.to_new(),
             "lyrics_area": self.lyrics_area.to_new(),
@@ -239,6 +288,11 @@ class Song:
         })
 
 song.set_parse_action(Song)
+
+
+def form_title(filename, first_line):
+    return first_line[:len(filename)]
+
 
 # - Tests - 
 
@@ -365,7 +419,23 @@ __NOTOC__
 
 def test_song(data):
     result = song.parse_string(data)
-    print(result.as_list()[0].to_new())
+    obj_song = result.as_list()[0]
+    obj_song.set_old_filename("Nadopasanace.txt")
+    print(obj_song.to_new())
+
+def parse_and_convert(file_path):
+    filename = file_path.rsplit("/")[-1]
+    with open(file_path) as f:
+        old = f.read()
+        result = song.parse_string(old)
+        obj_song = result.as_list()[0]
+        obj_song.set_old_filename(filename)
+
+        return obj_song.to_new()
 
 if __name__ == '__main__':
-    test_song(data_song)
+    ##test_song(data_song)
+    filename = sys.argv[-1]
+    base_path = "/Users/srikanth/Code/sahityam/songs/"
+    file_path = os.path.join(base_path, filename)
+    print(parse_and_convert(file_path))
