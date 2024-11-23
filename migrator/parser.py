@@ -18,10 +18,10 @@ details_start = Literal("-details-").suppress()
 meaning_start = Literal("-meaning-").suppress()
 stanza_end = Literal("</stanza>").suppress()
 
-# Stanza: Define content 
-sahityam_content =  SkipTo(Literal("-details-")) | SkipTo(Literal("-meaning-")) | SkipTo(Literal("</stanza>")) 
-details_content = SkipTo(Literal("-meaning-")) | SkipTo(Literal("</stanza>")) 
-meaning_content = SkipTo(Literal("</stanza>")) 
+# Stanza: Define content
+sahityam_content =  SkipTo(Literal("-details-")) | SkipTo(Literal("-meaning-")) | SkipTo(Literal("</stanza>"))
+details_content = SkipTo(Literal("-meaning-")) | SkipTo(Literal("</stanza>"))
+meaning_content = SkipTo(Literal("</stanza>"))
 
 # Stanza: Put it all together
 stanza = Group(
@@ -53,19 +53,19 @@ def replace_sup(text):
     pat_sup_open = Suppress("<sup>")
     pat_sup_close = Suppress("</sup>")
     pat_word = Word(alphas)
-    
+
     # Define a pattern for <sup>number</sup> followed by a word
     pat_bad_sup = Combine(pat_sup_open + pat_number("num") + pat_sup_close + pat_word("word"))
     pat_good_sup = Combine(pat_word("word") + pat_sup_open + pat_number("num") + pat_sup_close)
     pat_sup = pat_bad_sup | pat_good_sup
-    
+
     # Define how to replace the matched pattern
     def replace_sup_to_brackets(tokens):
         return f"{tokens.word}[{tokens.num}]"
-    
+
     # Set parse action
     pat_sup.set_parse_action(replace_sup_to_brackets)
-    
+
     # Process the whole string to replace all occurrences
     result = pat_sup.transform_string(text)
     return result
@@ -95,7 +95,7 @@ class Stanza:
             "translation": translation,
         }])
 
-        
+
     def to_new(self):
         if len(paras(self.sahityam)) > 1 and len(paras(self.words)) > 1:
             # Convert into a StanzaList
@@ -103,7 +103,7 @@ class Stanza:
             return stanlist.to_new()
 
         self.sahityam = replace_sup(self.sahityam)
-        self.sahityam = self.sahityam.replace('\n', '   \n') 
+        self.sahityam = self.sahityam.replace('\n', '   \n')
         ## replace('<sup>', '[').replace('</sup>', ']') \
         self.words = replace_sup(self.words)
         self.words = self.words.replace('((', '![') \
@@ -178,7 +178,7 @@ class LyricSection:
 
     def to_new(self):
         return TEMPL_LYRICSECTION.format(self.header, self.stanza_list.to_new())
-        
+
 
 class LyricSectionList:
     def __init__(self, tokens):
@@ -206,7 +206,7 @@ lyric_section_list.set_parse_action(LyricSectionList)
 category = Literal("[[Category:").suppress() + Word(alphanums)("category") + Literal("]]").suppress()
 
 prose_header = Literal("==").suppress() + Word(alphanums)("header") + Literal("==").suppress()
-prose_section = prose_header + Group(SkipTo(prose_header) | SkipTo(category))("prose_content") 
+prose_section = prose_header + Group(SkipTo(prose_header) | SkipTo(category))("prose_content")
 prose_section_list = OneOrMore(prose_section)
 
 # --- ProseSection: Object Representation ----
@@ -334,7 +334,7 @@ class Song:
         first_line = self.lyrics_area.get_line(0, 0, 0)
         self.title = form_title(self.new_file, first_line)
         self.header_area.set_title(self.title)
-        
+
     def __repr__(self):
         return "\n".join(["{}: {}".format(k, v) for k, v in self.__dict__.items()])
 
@@ -353,7 +353,7 @@ def form_title(filename, first_line):
     return first_line[:len(filename)]
 
 
-# - Tests - 
+# - Tests -
 
 def test_stanza_list(data):
     result = stanza_list.parse_string(data)
@@ -363,7 +363,7 @@ def test_stanza_list(data):
 data_lyrics = """
 ===Pallavi===
 <stanza>
-nAdOpAsanacE<sup>1</sup> zaGkara 
+nAdOpAsanacE<sup>1</sup> zaGkara
 nArAyaNa vidhulu velasiri O manasA
 -details-
 ((nAdOpAsanacE "by worship of Nada"))<sup>1</sup> zaGkara nArAyaNa ((vidhulu "and Brahma")) ((velasiri "became effulgent")) O ((manasA "Mind"))
@@ -373,10 +373,10 @@ By meditation on Nada, the Trinity became effulgent, O Mind.
 
 ===Anupallavi===
 <stanza>
-vEdOddhArulu vEdAtItulu 
+vEdOddhArulu vEdAtItulu
 vizwamella niNDiyuNDE vAralu
 -details-
-vEda ((uddhArulu "upholders")) vEda ((atItulu "those beyond")) 
+vEda ((uddhArulu "upholders")) vEda ((atItulu "those beyond"))
 ((vizwamu-ella "in the whole universe")) ((niNDiyuNDE-vAralu "present throughout"))
 -meaning-
 (By meditation... became) upholders of the Vedas and
@@ -421,7 +421,7 @@ data_song = """
 ==Lyrics==
 ===Pallavi===
 <stanza>
-nAdOpAsanacE<sup>1</sup> zaGkara 
+nAdOpAsanacE<sup>1</sup> zaGkara
 nArAyaNa vidhulu velasiri O manasA
 -details-
 ((nAdOpAsanacE "by worship of Nada"))<sup>1</sup> zaGkara nArAyaNa ((vidhulu "and Brahma")) ((velasiri "became effulgent")) O ((manasA "Mind"))
@@ -431,10 +431,10 @@ By meditation on Nada, the Trinity became effulgent, O Mind.
 
 ===Anupallavi===
 <stanza>
-vEdOddhArulu vEdAtItulu 
+vEdOddhArulu vEdAtItulu
 vizwamella niNDiyuNDE vAralu
 -details-
-vEda ((uddhArulu "upholders")) vEda ((atItulu "those beyond")) 
+vEda ((uddhArulu "upholders")) vEda ((atItulu "those beyond"))
 ((vizwamu-ella "in the whole universe")) ((niNDiyuNDE-vAralu "present throughout"))
 -meaning-
 (By meditation... became) upholders of the Vedas and
@@ -443,19 +443,19 @@ those beyond the Vedas, and are present throughout the whole universe.
 
 ===Charanam===
 <stanza>
-mantrAtmulu yantra tantrAtmulu mari 
+mantrAtmulu yantra tantrAtmulu mari
 manvantramulennO<sup>2</sup> gala vAralu
-tantrI laya swara rAga vilOlulu<sup>3</sup> 
+tantrI laya swara rAga vilOlulu<sup>3</sup>
 tyAgarAja vandyulu swatantrulu
 -details-
-((mantra-Atmulu "Indwellers of mantras")) ((yantra-tantra-Atmulu "Indwellers of Yantra and Tantra")) ((mari "and")) 
-((manvantramulu "aeons"))-((ennO "many"))<sup>2</sup> ((gala-vAralu "having")) 
+((mantra-Atmulu "Indwellers of mantras")) ((yantra-tantra-Atmulu "Indwellers of Yantra and Tantra")) ((mari "and"))
+((manvantramulu "aeons"))-((ennO "many"))<sup>2</sup> ((gala-vAralu "having"))
 ((tantrI "Chord Instruments")) ((laya "percussion")) swara rAga ((vilOlulu "experts in"))<sup>3</sup>
 tyAgarAja ((vandyulu "saluted")) ((swatantrulu "independent - self-regulated"))
 -meaning-
-(By meditation... became) the Indwellers of mantra, yantra and tantra  
-those spanning many aeons, connoisseurs of musical instruments, 
-rhythm, swara and raga, 
+(By meditation... became) the Indwellers of mantra, yantra and tantra
+those spanning many aeons, connoisseurs of musical instruments,
+rhythm, swara and raga,
 those saluted by Thyagaraja and self-regulated.
 </stanza>
 
@@ -478,22 +478,22 @@ __NOTOC__
 
 data_combined = """\
 <stanza>
-1. pavamAna sutuDu paTTu 
+1. pavamAna sutuDu paTTu
 <sup>1</sup>pAdAravindamulaku (nI)
 
 2. paGkajAkSi nelakonna-
 yaGga<sup>2</sup> yugamunaku (nI)
 
-3. nava muktA hAramulu 
+3. nava muktA hAramulu
 naTiyiJcEyuramunaku (nI)
 
-4. naLinAri kEru ciru 
+4. naLinAri kEru ciru
 navvu gala mOmunaku (nI)
 
-5. prahlAda nAradAdi bhaktulu 
+5. prahlAda nAradAdi bhaktulu
 <sup>3</sup>pogaDucuNDE (nI)
 
-6. rAjIva nayana tyAgarAja 
+6. rAjIva nayana tyAgarAja
 vinutamaina (nI)
 -details-
 1. ((pavamAna-sutuDu "Anjaneya - son of Wind God")) ((paTTu "held")) ((pAda "feet"))-((aravindamulaku "to the Lotus")) (nI)
@@ -517,11 +517,11 @@ vinutamaina (nI)
 
 2. May there ever be victory and prosperity - to the pair of thighs where Sita – the Lotus Eyed - is seated and to Your name and form!
 
-3. May there ever be victory and prosperity - to Your broad chest wherein dangles new pearl necklaces and to Your name and form! 
+3. May there ever be victory and prosperity - to Your broad chest wherein dangles new pearl necklaces and to Your name and form!
 
-4. May there ever be victory and prosperity - to the smiling face that derides the Moon – the enemy of Lotus - and to Your name and form! 
+4. May there ever be victory and prosperity - to the smiling face that derides the Moon – the enemy of Lotus - and to Your name and form!
 
-5. May there ever be victory and prosperity to Your name and form which are ever extolled by Prahlada, Narada and other devotees! 
+5. May there ever be victory and prosperity to Your name and form which are ever extolled by Prahlada, Narada and other devotees!
 
 6. O Lotus Eyed! May there ever be victory and prosperity to Your name and form which are praised by this Thyagaraja!
 </stanza>

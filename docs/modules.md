@@ -1,0 +1,1 @@
+::: sahityam_migrate.foo

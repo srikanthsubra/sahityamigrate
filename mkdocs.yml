@@ -1,0 +1,52 @@
+site_name: sahityam-migrate
+repo_url: https://github.com/srikanthsubra/sahityam-migrate
+site_url: https://srikanthsubra.github.io/sahityam-migrate
+site_description: Migrate lyrics from sahityam.net mediawiki to anupallavi.com hugo site.
+site_author: Srikanth Subramanian
+edit_uri: edit/main/docs/
+repo_name: srikanthsubra/sahityam-migrate
+copyright: Maintained by <a href="https://srikanthsubra.com">srikanthsubra</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [sahityam_migrate]
+theme:
+  name: material
+  feature:
+    tabs: true
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/srikanthsubra/sahityam-migrate
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/sahityam-migrate
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
