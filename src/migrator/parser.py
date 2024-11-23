@@ -12,7 +12,8 @@ from pprint import pprint
 # --- StanzaList: Grammar ----
 
 # Stanza: Define structure
-stanza_start = Literal("<stanza>").suppress()
+pat_number = Word(nums)
+stanza_start = Literal("<stanza>").suppress() | Suppress(Literal("<stanza") + Literal("num=\"") + pat_number + Literal("\">"))
 details_start = Literal("-details-").suppress()
 meaning_start = Literal("-meaning-").suppress()
 stanza_end = Literal("</stanza>").suppress()
@@ -48,6 +49,27 @@ def paras(text):
     clean = lambda p: re_numeric.sub("", p.strip() + "\n")
     return [clean(p) for p in text.split("\n\n")]
 
+def replace_sup(text):
+    pat_sup_open = Suppress("<sup>")
+    pat_sup_close = Suppress("</sup>")
+    pat_word = Word(alphas)
+    
+    # Define a pattern for <sup>number</sup> followed by a word
+    pat_bad_sup = Combine(pat_sup_open + pat_number("num") + pat_sup_close + pat_word("word"))
+    pat_good_sup = Combine(pat_word("word") + pat_sup_open + pat_number("num") + pat_sup_close)
+    pat_sup = pat_bad_sup | pat_good_sup
+    
+    # Define how to replace the matched pattern
+    def replace_sup_to_brackets(tokens):
+        return f"{tokens.word}[{tokens.num}]"
+    
+    # Set parse action
+    pat_sup.set_parse_action(replace_sup_to_brackets)
+    
+    # Process the whole string to replace all occurrences
+    result = pat_sup.transform_string(text)
+    return result
+
 class Stanza:
     def __init__(self, tokens):
         token = tokens[0] # Since Group() was used in stanza grammar def
@@ -80,12 +102,14 @@ class Stanza:
             stanlist = StanzaList.from_text(self.sahityam, self.words, self.translation)
             return stanlist.to_new()
 
-        self.sahityam = self.sahityam.replace('<sup>', '[').replace('</sup>', ']') \
-            .replace('\n', '   \n')
+        self.sahityam = replace_sup(self.sahityam)
+        self.sahityam = self.sahityam.replace('\n', '   \n') 
+        ## replace('<sup>', '[').replace('</sup>', ']') \
+        self.words = replace_sup(self.words)
         self.words = self.words.replace('((', '![') \
             .replace('))', ')').replace(' "', '](means "') \
-            .replace('<sup>', '[').replace('</sup>', ']') \
             .replace('\n', '   \n')  if self.words else ""
+            ##.replace('<sup>', '[').replace('</sup>', ']') \
         return TEMPL_STANZA.format(self.sahityam, self.words, self.translation, "\n".join(self.appendix))
 
 class AsLister:
