@@ -13,7 +13,7 @@ from pprint import pprint
 
 # Stanza: Define structure
 pat_number = Word(nums)
-stanza_start = Literal("<stanza>").suppress() | Suppress(Literal("<stanza") + Literal("num=\"") + pat_number + Literal("\">"))
+stanza_start = Literal("<stanza>").suppress() | Suppress(Literal("<stanza") + Literal("num=") + Optional("\"") + Optional(pat_number) + Optional ("\"") + Literal(">"))
 details_start = Literal("-details-").suppress()
 meaning_start = Literal("-meaning-").suppress()
 stanza_end = Literal("</stanza>").suppress()
@@ -264,6 +264,8 @@ composer: {composer}
 language: {language}
 composition: {composition}
 ---
+
+## Sahityam
 """
 
 map_hk = {
@@ -281,7 +283,7 @@ class CategoryList:
     def __init__(self, tokens):
         self.categories = tokens.as_list()
         if len(self.categories) < 5:
-            raise ValueError("Too few categories")
+            raise ValueError("Too few categories: {}".format(self.categories))
         self.raga = self.categories[0]
         self.tala = self.categories[1]
         self.composer = self.categories[2]
@@ -299,7 +301,7 @@ class CategoryList:
         return TEMPL_HEADER.format(**{
             "title": self.title,
             "date": datetime.datetime.now().strftime("%Y-%m-%d"),
-            "raga": self.raga.lower(),
+            "raga": self.raga,
             "tala": to_hk(self.tala),
             "composer": to_hk(self.composer),
             "language": to_hk(self.language),
@@ -546,11 +548,11 @@ def parse_and_convert(file_path):
         obj_song = result.as_list()[0]
         obj_song.set_old_filename(filename)
 
-        return obj_song.to_new()
+        return obj_song
 
 if __name__ == '__main__':
     ##test_combined(data_combined)
     filename = sys.argv[-1]
     base_path = "/Users/srikanth/Code/sahityam/songs/"
     file_path = os.path.join(base_path, filename)
-    print(parse_and_convert(file_path))
+    print(parse_and_convert(file_path).to_new())

@@ -44,11 +44,15 @@ dev-dependencies = [
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-py-modules = ["migrator"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["migrator*"]
+
+[project.scripts]
+migrator = "migrator.manager:main"
 
 [tool.mypy]
-files = ["migrator"]
+files = ["migrator/*"]
 disallow_untyped_defs = true
 disallow_any_unimported = true
 no_implicit_optional = true
