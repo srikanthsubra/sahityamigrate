@@ -37,11 +37,12 @@ class FieldMap:
         self.name = name
         self.file = filepath
         self.map = {}
-        reader = csv.reader(self.file)
-        for row in reader:
-            if len(row) == 2:  # Ensure there are exactly two values
-                key, value = row
-                self.map[key] = value  # Store as key-value pair
+        with open(filepath, newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if len(row) == 2:  # Ensure there are exactly two values
+                    key, value = row
+                    self.map[key] = value  # Store as key-value pair
 
     def __contains__(self, key):
         return key in self.map
@@ -58,7 +59,8 @@ class FieldMap:
 
 def get_queue():
     argpar = argparse.ArgumentParser(description="Process a file path.")
-    argpar.add_argument('-f', '--file', help='Path to the input file')
+    argpar.add_argument('-f', '--file', required=False, help='Path to the input file')
+    argpar.add_argument('-s', '--song', required=False, help='The song file to process')
     args = argpar.parse_args()
     queue = []
 
@@ -73,9 +75,8 @@ def get_queue():
                 queue = content.splitlines()
         except FileNotFoundError:
             print(f"Error: The file '{file_path}' does not exist.")
-    else:
-        args = sys.argv[1:]
-        queue = sys.argv[1:]
+    elif args.song:
+        queue = [args.song]
 
     return queue
 
@@ -95,15 +96,48 @@ def main():
             continue
 
         try:
-            print("Processing", song)
+            print("\nProcessing", song)
             parsed_song = wikiparser.parse_and_convert(PATH_WIKISONGS + song)
 
             raga = parsed_song.header_area.raga
             if raga not in corrections:
-                corrected_raga = input("Raga [{}]: ".format(parsed_song.header_area.raga))
+                corrected_raga = input("Raga [{}]: ".format(raga))
                 if corrected_raga:
                     corrections.append(parsed_song.header_area.raga, corrected_raga)
             parsed_song.header_area.raga = corrections.get(raga)
+
+            tala = parsed_song.header_area.tala
+            if tala not in corrections:
+                corrected_tala = input("Tala [{}]: ".format(tala))
+                if corrected_tala:
+                    corrections.append(parsed_song.header_area.tala, corrected_tala)
+            parsed_song.header_area.tala = corrections.get(tala)
+
+            composer = parsed_song.header_area.composer
+            if composer not in corrections:
+                corrected_composer = input("composer [{}]: ".format(composer))
+                if corrected_composer:
+                    corrections.append(parsed_song.header_area.composer, corrected_composer)
+            parsed_song.header_area.composer = corrections.get(composer)
+
+            language = parsed_song.header_area.language
+            if language not in corrections:
+                corrected_language = input("language [{}]: ".format(language))
+                if corrected_language:
+                    corrections.append(parsed_song.header_area.language, corrected_language)
+            parsed_song.header_area.language = corrections.get(language)
+
+            format = parsed_song.header_area.format
+            if format not in corrections:
+                corrected_format = input("format [{}]: ".format(format))
+                if corrected_format:
+                    corrections.append(parsed_song.header_area.format, corrected_format)
+            parsed_song.header_area.format = corrections.get(format)
+
+            title = parsed_song.title
+            corrected_title = input("Title [{}]: ".format(title))
+            if corrected_title:
+                parsed_song.title = corrected_title
 
             filename = parsed_song.new_file
             corrected_filename = input("Filename [{}]: ".format(filename))
@@ -113,7 +147,7 @@ def main():
             write_file(filename, parsed_song.to_new())
             completed.append(song)
         except Exception as e:
-            print("Failed converting or writing song ", song)
+            print("Failed converting or writing song {} due to {}".format(song, e))
             failed.append(song)
             traceback.print_exc()
 

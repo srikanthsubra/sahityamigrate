@@ -203,7 +203,7 @@ lyric_section_list.set_parse_action(LyricSectionList)
 # ====================== ProseSectionList ======================
 
 # --- ProseSection: Grammar ----
-category = Literal("[[Category:").suppress() + Word(alphanums)("category") + Literal("]]").suppress()
+category = Literal("[[Category:").suppress() + Word(alphanums+" ")("category") + Literal("]]").suppress()
 
 prose_header = Literal("==").suppress() + Word(alphanums)("header") + Literal("==").suppress()
 prose_section = prose_header + Group(SkipTo(prose_header) | SkipTo(category))("prose_content")
@@ -277,7 +277,7 @@ map_hk = {
 }
 
 def to_hk(val):
-    return map_hk.get(val, val.lower())
+    return map_hk.get(val, val)
 
 class CategoryList:
     def __init__(self, tokens):
@@ -302,10 +302,10 @@ class CategoryList:
             "title": self.title,
             "date": datetime.datetime.now().strftime("%Y-%m-%d"),
             "raga": self.raga,
-            "tala": to_hk(self.tala),
-            "composer": to_hk(self.composer),
-            "language": to_hk(self.language),
-            "composition": to_hk(self.format),
+            "tala": self.tala,
+            "composer": self.composer,
+            "language": self.language,
+            "composition": self.format,
         })
 
 category_list.set_parse_action(CategoryList)
@@ -331,17 +331,17 @@ class Song:
     def set_old_filename(self, filename):
         self.old_file = filename
         self.new_file = self.old_file.replace('_', '-').lower()[:-4]
+        self.form_title()
 
     def form_title(self):
         first_line = self.lyrics_area.get_line(0, 0, 0)
         self.title = form_title(self.new_file, first_line)
-        self.header_area.set_title(self.title)
 
     def __repr__(self):
         return "\n".join(["{}: {}".format(k, v) for k, v in self.__dict__.items()])
 
     def to_new(self):
-        self.form_title()
+        self.header_area.set_title(self.title)
         return TEMPL_SONG.format(**{
             "header_area": self.header_area.to_new(),
             "lyrics_area": self.lyrics_area.to_new(),
@@ -352,7 +352,7 @@ song.set_parse_action(Song)
 
 
 def form_title(filename, first_line):
-    return first_line[:len(filename)]
+    return first_line[:len(filename)].strip()
 
 
 # - Tests -
