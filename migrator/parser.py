@@ -84,6 +84,9 @@ class Stanza:
     def get_line(self, index):
         return self.sahityam.splitlines()[index]
 
+    def is_translated(self):
+        return bool(self.translation.strip())
+
     def __repr__(self):
         return "<Stanza>:" + str(self.__dict__)
 
@@ -128,6 +131,9 @@ class StanzaList:
 
     def get_line(self, stanza, index):
         return self.stanzas[stanza].get_line(index)
+
+    def is_translated(self):
+        return any(s.is_translated() for s in self.stanzas)
 
     def __repr__(self):
         return "<StanzaList>:" + repr(self.stanzas)
@@ -176,6 +182,9 @@ class LyricSection:
     def get_line(self, stanza, index):
         return self.stanza_list.get_line(stanza, index)
 
+    def is_translated(self):
+        return self.stanza_list.is_translated()
+
     def to_new(self):
         return TEMPL_LYRICSECTION.format(self.header, self.stanza_list.to_new())
 
@@ -192,6 +201,9 @@ class LyricSectionList:
 
     def get_line(self, section, stanza, index):
         return self.sections[section].get_line(stanza, index)
+
+    def is_translated(self):
+        return any(sec.is_translated() for sec in self.sections)
 
     def to_new(self):
         self.append(0, 0, "<!--more-->")
@@ -311,7 +323,8 @@ class CategoryList:
 category_list.set_parse_action(CategoryList)
 
 # ====================== Song ======================
-song = Literal("==Lyrics==").suppress() + lyric_section_list("lyrics_area") + prose_section_list("prose_area") + category_list("header_area") + notoc
+pat_draft = Optional(Literal("{{draft}}"))
+song = pat_draft("is_draft") + Literal("==Lyrics==").suppress() + lyric_section_list("lyrics_area") + prose_section_list("prose_area") + category_list("header_area") + notoc
 
 TEMPL_SONG ="""\
 {header_area}
@@ -327,6 +340,7 @@ class Song:
         self.old_file = ""
         self.new_file = ""
         self.title = ""
+        self.is_draft = parsed.get("is_draft")
 
     def set_old_filename(self, filename):
         self.old_file = filename
@@ -336,6 +350,9 @@ class Song:
     def form_title(self):
         first_line = self.lyrics_area.get_line(0, 0, 0)
         self.title = form_title(self.new_file, first_line)
+
+    def is_translated(self):
+        return self.lyrics_area.is_translated()
 
     def __repr__(self):
         return "\n".join(["{}: {}".format(k, v) for k, v in self.__dict__.items()])

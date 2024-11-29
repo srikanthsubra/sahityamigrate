@@ -57,11 +57,7 @@ class FieldMap:
             writer.writerow([key, value])
         self.map[key] = value
 
-def get_queue():
-    argpar = argparse.ArgumentParser(description="Process a file path.")
-    argpar.add_argument('-f', '--file', required=False, help='Path to the input file')
-    argpar.add_argument('-s', '--song', required=False, help='The song file to process')
-    args = argpar.parse_args()
+def get_queue(args):
     queue = []
 
     if args.file:
@@ -86,10 +82,16 @@ def write_file(name, content):
         f.write(content)
 
 def main():
+    argpar = argparse.ArgumentParser(description="Process a file path.")
+    argpar.add_argument('-f', '--file', required=False, help='Path to the input file')
+    argpar.add_argument('-s', '--song', required=False, help='The song file to process')
+    argpar.add_argument('-d', '--skip-drafts', action='store_true', help='Skip draft stage songs')
+    args = argpar.parse_args()
+
     completed = SongList("Completed", FILE_COMPLETED)
     failed = SongList("Failed", FILE_FAILED)
     corrections = FieldMap("Corrections", FILE_CORRECTIONS)
-    queue = get_queue()
+    queue = get_queue(args)
     for song in queue:
         if song in completed:
             print("Skipping {} since it's already migrated.".format(song))
@@ -98,6 +100,10 @@ def main():
         try:
             print("\nProcessing", song)
             parsed_song = wikiparser.parse_and_convert(PATH_WIKISONGS + song)
+
+            if args.skip_drafts and (parsed_song.is_draft or not parsed_song.is_translated()):
+                print("Skipping {} since it's a draft or not translated".format(song))
+                continue
 
             raga = parsed_song.header_area.raga
             if raga not in corrections:
