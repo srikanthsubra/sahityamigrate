@@ -46,13 +46,14 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["migrator*"]
+include = ["migrator*", "rendition*"]
 
 [project.scripts]
 migrator = "migrator.manager:main"
+rendition = "rendition.manager:main"
 
 [tool.mypy]
-files = ["migrator/*"]
+files = ["migrator/*", "rendition/*"]
 disallow_untyped_defs = true
 disallow_any_unimported = true
 no_implicit_optional = true
@@ -120,4 +121,4 @@ skip_empty = true
 
 [tool.coverage.run]
 branch = true
-source = ["migrator"]
+source = ["migrator", "rendition"]
