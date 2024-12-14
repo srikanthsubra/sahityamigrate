@@ -46,7 +46,7 @@ def search_youtube(api_key, search_query):
 # Example usage
 def find_renditions(title) -> str:
     # Replace 'YOUR_API_KEY' with your actual YouTube Data API key
-    API_KEY = "AIzaSyD5fNw09yCaJ0pZZbxFspNipG6U5lnMOEI"
+    API_KEY = ""
 
     videos = search_youtube(API_KEY, title)
     vid_ids: list[str] = []
